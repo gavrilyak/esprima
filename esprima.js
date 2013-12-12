@@ -2279,8 +2279,10 @@ parseYieldExpression: true
         if (options.name && strict && isRestrictedWord(params[0].name)) {
             throwErrorTolerant(options.name, Messages.StrictParamName);
         }
-        if (state.yieldAllowed && !state.yieldFound) {
-            throwErrorTolerant({}, Messages.NoYieldInGenerator);
+        if (! extra.allow_starless_generators){
+            if (state.yieldAllowed && !state.yieldFound) {
+                throwErrorTolerant({}, Messages.NoYieldInGenerator);
+            }
         }
         strict = previousStrict;
         state.yieldAllowed = previousYieldAllowed;
@@ -4152,7 +4154,7 @@ parseYieldExpression: true
     }
 
     function parseFunctionDeclaration() {
-        var id, body, token, tmp, firstRestricted, message, previousStrict, previousYieldAllowed, generator, expression;
+        var id, body, token, tmp, firstRestricted, message, previousStrict, previousYieldAllowed, generator, expression, yieldrequired;
 
         expectKeyword('function');
 
@@ -4160,8 +4162,10 @@ parseYieldExpression: true
         if (match('*')) {
             lex();
             generator = true;
+            yieldrequired = true;
+        } else if (extra.allow_starless_generators) {
+            generator = true;  // yield possible.  we set to false later if none found.
         }
-
         token = lookahead;
 
         id = parseVariableIdentifier();
@@ -4200,8 +4204,15 @@ parseYieldExpression: true
         if (strict && tmp.stricted) {
             throwErrorTolerant(tmp.stricted, message);
         }
-        if (state.yieldAllowed && !state.yieldFound) {
-            throwErrorTolerant({}, Messages.NoYieldInGenerator);
+        if (extra.allow_starless_generators) {
+            generator = state.yieldFound;
+            if (yieldrequired && !state.yieldFound) {
+                throwError({}, Messages.NoYieldInGenerator);
+            }
+        } else {
+            if (state.yieldAllowed && !state.yieldFound) {
+                throwErrorTolerant({}, Messages.NoYieldInGenerator);
+            }
         }
         strict = previousStrict;
         state.yieldAllowed = previousYieldAllowed;
@@ -4210,7 +4221,7 @@ parseYieldExpression: true
     }
 
     function parseFunctionExpression() {
-        var token, id = null, firstRestricted, message, tmp, body, previousStrict, previousYieldAllowed, generator, expression;
+        var token, id = null, firstRestricted, message, tmp, body, previousStrict, previousYieldAllowed, generator, expression, yieldrequired;
 
         expectKeyword('function');
 
@@ -4219,6 +4230,9 @@ parseYieldExpression: true
         if (match('*')) {
             lex();
             generator = true;
+            yieldrequired = true;
+        } else if (extra.allow_starless_generators) {
+            generator = true;  // yield possible.  we set to false later if none found.
         }
 
         if (!match('(')) {
@@ -4259,8 +4273,15 @@ parseYieldExpression: true
         if (strict && tmp.stricted) {
             throwErrorTolerant(tmp.stricted, message);
         }
-        if (state.yieldAllowed && !state.yieldFound) {
-            throwErrorTolerant({}, Messages.NoYieldInGenerator);
+        if (extra.allow_starless_generators) {
+            generator = state.yieldFound;
+            if (yieldrequired && !state.yieldFound) {
+                throwError({}, Messages.NoYieldInGenerator);
+            }
+        } else {
+            if (state.yieldAllowed && !state.yieldFound) {
+                throwErrorTolerant({}, Messages.NoYieldInGenerator);
+            }
         }
         strict = previousStrict;
         state.yieldAllowed = previousYieldAllowed;
@@ -5424,6 +5445,8 @@ parseYieldExpression: true
         };
 
         extra = {};
+        extra.allow_starless_generators = true;
+
         if (typeof options !== 'undefined') {
             extra.range = (typeof options.range === 'boolean') && options.range;
             extra.loc = (typeof options.loc === 'boolean') && options.loc;
